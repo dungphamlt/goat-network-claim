@@ -14,6 +14,7 @@ import {
 import { wagmiContractConfig } from "../config/wagmiContract";
 import { CircleAlert } from "lucide-react";
 import { toast } from "react-toastify";
+import { format } from "date-fns";
 
 const DEFAULT_CLAIM_STATUS: ClaimStatus = {
   phase1: { claimed: false, status: "", claimableAmount: "", canClaim: false },
@@ -72,12 +73,6 @@ function Content() {
 
   const formatAmount = (amount: string) =>
     Number(BigInt(amount) / BigInt(10 ** 18));
-
-  const formatDate = (timestamp: bigint | undefined) => {
-    if (!timestamp) return "N/A";
-    // Convert từ seconds sang milliseconds and format to date YYYY-MM-DD
-    return new Date(Number(timestamp) * 1000).toISOString().split("T")[0];
-  };
 
   // Tính claim date cho phase 1 và phase 2
   // Giả sử phase 1 = startTime, phase 2 = startTime + 30 days
@@ -258,7 +253,7 @@ function Content() {
   }: {
     title: string;
     phase: PhaseClaimStatus;
-    claimDate?: bigint;
+    claimDate?: string;
   }) => (
     <div className="border border-primary rounded-xl">
       <div className="flex items-center justify-between p-4 border-b border-primary">
@@ -283,7 +278,16 @@ function Content() {
         </div>
         <div className="flex items-center justify-between">
           <p className="text-lg">Claim Date</p>
-          <p className="text-lg">{formatDate(claimDate)}</p>
+          <p className="text-lg">
+            {claimDate
+              ? title === "Vesting Round 1"
+                ? format(new Date(Number(claimDate) * 1000), "yyyy-MM-dd")
+                : format(
+                    new Date(Number(claimDate) * 1000),
+                    "yyyy-MM-dd HH:mm:ss"
+                  )
+              : "N/A"}
+          </p>
         </div>
         <div className="flex items-center justify-between">
           <p className="text-lg">Status</p>
@@ -368,12 +372,12 @@ function Content() {
               <PhaseCard
                 title="Vesting Round 1"
                 phase={data.claimStatus.phase1}
-                claimDate={claimDates.phase1}
+                claimDate={claimDates.phase1?.toString()}
               />
               <PhaseCard
                 title="Vesting Round 2"
                 phase={data.claimStatus.phase2}
-                claimDate={claimDates.phase2}
+                claimDate={claimDates.phase2?.toString()}
               />
             </div>
             {/* Cảnh báo nếu không có đủ BNB */}
