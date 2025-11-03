@@ -1,10 +1,22 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAccount, useDisconnect, useConnect } from "wagmi";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import Cookies from "js-cookie";
 import { Menu, X } from "lucide-react";
 import Logo from "../assets/logo.svg?react";
+import MetaMaskIcon from "../assets/metamask-icon.svg?react";
+import TrustIcon from "../assets/trust-wallet-logo.svg?react";
+import FantomIcon from "../assets/phantom-wallet.png";
+import RabbyIcon from "../assets/rabby-waller.png";
+
+interface WalletInfo {
+  id: string;
+  name: string;
+  icon?: React.ReactNode;
+  connectorId: string;
+  isInstalled: boolean;
+}
 
 function Header() {
   const { address, isConnected } = useAccount();
@@ -12,23 +24,77 @@ function Header() {
   const { connect, connectors, isPending } = useConnect();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showWalletList, setShowWalletList] = useState(false);
 
-  const handleConnect = useCallback(() => {
-    const metaMaskConnector = connectors.find(
-      (connector) => connector.id === "metaMask"
-    );
-    const injectedConnector = connectors.find(
-      (connector) => connector.id === "injected"
-    );
+  // Detect installed wallets (giống WalletOption.tsx)
+  const allSupportedWallets = useMemo(() => {
+    const wallets: WalletInfo[] = [];
+    const hasEthereum = typeof window !== "undefined" && window.ethereum;
+    const provider = hasEthereum ? window.ethereum : null;
 
-    if (metaMaskConnector) {
-      connect({ connector: metaMaskConnector });
-    } else if (injectedConnector) {
-      connect({ connector: injectedConnector });
-    } else if (connectors[0]) {
-      connect({ connector: connectors[0] });
-    }
-  }, [connectors, connect]);
+    // MetaMask
+    const metaMaskConnector = connectors.find((c) => c.id === "metaMask");
+    const phantomConnector = connectors.find((c) => c.id === "app.phantom");
+    const isMetaMaskInstalled = provider?.isMetaMask === true;
+    wallets.push({
+      id: "metaMask",
+      name: "MetaMask",
+      connectorId: "metaMaskSDK",
+      isInstalled: isMetaMaskInstalled || !!metaMaskConnector,
+      icon: <MetaMaskIcon className="w-5 h-5" />,
+    });
+
+    // Trust Wallet
+    const isTrustInstalled =
+      hasEthereum &&
+      (provider?.isTrust === true || provider?.isTrustWallet === true);
+    wallets.push({
+      id: "trust",
+      name: "Trust Wallet",
+      icon: <TrustIcon className="w-5 h-5" />,
+      connectorId: "injected",
+      isInstalled: !!isTrustInstalled,
+    });
+
+    // Fantom Wallet
+    const isFantomInstalled = hasEthereum && !!phantomConnector;
+    wallets.push({
+      id: "fantom",
+      name: "Fantom Wallet",
+      icon: <img src={FantomIcon} alt="Fantom Wallet" className="w-5 h-5" />,
+      connectorId: "app.phantom",
+      isInstalled: !!isFantomInstalled,
+    });
+
+    // Rabby Wallet
+    const isRabbyInstalled = hasEthereum && provider?.isRabby === true;
+    wallets.push({
+      id: "rabby",
+      name: "Rabby Wallet",
+      icon: (
+        <img
+          src={RabbyIcon}
+          alt="Rabby Wallet"
+          className="w-5 h-5 rounded-full"
+        />
+      ),
+      connectorId: "injected",
+      isInstalled: !!isRabbyInstalled,
+    });
+
+    return wallets;
+  }, [connectors]);
+
+  const handleConnectWallet = useCallback(
+    (wallet: WalletInfo) => {
+      const connector = connectors.find((c) => c.id === wallet.connectorId);
+      if (connector) {
+        connect({ connector });
+        setShowWalletList(false);
+      }
+    },
+    [connectors, connect]
+  );
 
   // Kiểm tra và verify token khi có address
   const checkAuth = useCallback(async () => {
@@ -54,6 +120,23 @@ function Header() {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Đóng wallet list khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showWalletList && !target.closest(".wallet-dropdown")) {
+        setShowWalletList(false);
+      }
+    };
+
+    if (showWalletList) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showWalletList]);
 
   const handleLogout = useCallback(() => {
     Cookies.remove("token");
@@ -110,13 +193,41 @@ function Header() {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={handleConnect}
-                  disabled={isPending}
-                  className="text-primary font-medium px-4 py-2 rounded-md border border-primary hover:bg-primary hover:text-black transition-all duration-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isPending ? "Connecting..." : "Connect Wallet"}
-                </button>
+                <div className="relative wallet-dropdown">
+                  <button
+                    onClick={() => setShowWalletList(!showWalletList)}
+                    disabled={isPending}
+                    className="text-primary font-medium px-4 py-2 rounded-md border border-primary hover:bg-primary hover:text-black transition-all duration-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isPending ? "Connecting..." : "Connect Wallet"}
+                  </button>
+                  {showWalletList && (
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-black border border-primary rounded-md shadow-lg z-50 p-2">
+                      {allSupportedWallets.map((wallet) => (
+                        <button
+                          key={wallet.id}
+                          onClick={() => handleConnectWallet(wallet)}
+                          disabled={isPending || !wallet.isInstalled}
+                          className={`w-full text-left text-white font-medium px-3 py-2 rounded-md border transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between mb-2 last:mb-0 ${
+                            wallet.isInstalled
+                              ? "border-primary/50 hover:border-primary hover:bg-primary/10"
+                              : "border-gray-600 bg-gray-800/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {wallet.icon && <span>{wallet.icon}</span>}
+                            <span className="text-sm">{wallet.name}</span>
+                          </div>
+                          {isPending && wallet.isInstalled && (
+                            <span className="text-primary text-xs">
+                              Connecting...
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -176,16 +287,44 @@ function Header() {
                   Logout
                 </button>
               ) : (
-                <button
-                  onClick={() => {
-                    handleConnect();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  disabled={isPending}
-                  className="text-primary font-medium px-4 py-2 rounded-md border border-primary hover:bg-primary hover:text-black transition-all duration-300 text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isPending ? "Connecting..." : "Connect Wallet"}
-                </button>
+                <div className="w-full">
+                  <button
+                    onClick={() => setShowWalletList(!showWalletList)}
+                    disabled={isPending}
+                    className="text-primary font-medium px-4 py-2 rounded-md border border-primary hover:bg-primary hover:text-black transition-all duration-300 text-left disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                  >
+                    {isPending ? "Connecting..." : "Connect Wallet"}
+                  </button>
+                  {showWalletList && (
+                    <div className="mt-2 w-full bg-black border border-primary rounded-md p-2">
+                      {allSupportedWallets.map((wallet) => (
+                        <button
+                          key={wallet.id}
+                          onClick={() => {
+                            handleConnectWallet(wallet);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          disabled={isPending || !wallet.isInstalled}
+                          className={`w-full text-left text-white font-medium px-3 py-2 rounded-md border transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between mb-2 last:mb-0 ${
+                            wallet.isInstalled
+                              ? "border-primary/50 hover:border-primary hover:bg-primary/10"
+                              : "border-gray-600 bg-gray-800/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {wallet.icon && <span>{wallet.icon}</span>}
+                            <span className="text-sm">{wallet.name}</span>
+                          </div>
+                          {isPending && wallet.isInstalled && (
+                            <span className="text-primary text-xs">
+                              Connecting...
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

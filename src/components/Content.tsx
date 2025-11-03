@@ -15,6 +15,7 @@ import { wagmiContractConfig } from "../config/wagmiContract";
 import { CircleAlert } from "lucide-react";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
+import CountdownTimer from "./CountdownTimer";
 
 const DEFAULT_CLAIM_STATUS: ClaimStatus = {
   phase1: { claimed: false, status: "", claimableAmount: "", canClaim: false },
@@ -279,14 +280,7 @@ function Content() {
         <div className="flex items-center justify-between">
           <p className="text-lg">Claim Date</p>
           <p className="text-lg">
-            {claimDate
-              ? title === "Vesting Round 1"
-                ? format(new Date(Number(claimDate) * 1000), "yyyy-MM-dd")
-                : format(
-                    new Date(Number(claimDate) * 1000),
-                    "yyyy-MM-dd HH:mm:ss"
-                  )
-              : "N/A"}
+            {format(new Date(Number(claimDate) * 1000), "yyyy-MM-dd HH:mm:ss")}
           </p>
         </div>
         <div className="flex items-center justify-between">
@@ -359,12 +353,31 @@ function Content() {
 
   return (
     <div className="flex-1 bg-black flex items-center justify-center py-6">
-      <div className="flex flex-col items-center justify-center border border-primary rounded-xl p-4 shadow-primary xl:w-3/5 sm:w-4/5">
-        <div className="flex w-full flex-col items-center justify-center bg-primary rounded-xl p-6 gap-8">
+      <div className="flex flex-col items-center justify-center md:border border-primary rounded-xl p-4 md:shadow-primary xl:w-3/5 sm:w-4/5">
+        <div className="flex w-full flex-col items-center justify-center bg-primary rounded-xl p-6 gap-4">
           <p className="text-2xl font-bold text-black">Total Allocation</p>
           <p className="text-4xl font-bold text-black">
             {data.eligible ? `${data.amount} $GOATED` : "Not eligible"}
           </p>
+          {/* display contract address and coppy contract address */}
+          <div className="flex items-center gap-3">
+            <p className=" text-black hidden md:block">
+              {wagmiContractConfig.address}
+            </p>
+            <p className=" text-black block md:hidden">
+              {wagmiContractConfig.address.slice(0, 6)}...
+              {wagmiContractConfig.address.slice(-4)}
+            </p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(wagmiContractConfig.address);
+                toast.success("Copied to clipboard");
+              }}
+              className="bg-blue-500 text-white px-4 py-1 rounded-md hover:bg-blue-600 transition-all duration-300"
+            >
+              Copy
+            </button>
+          </div>
         </div>
         {data.eligible && data.amount > 0 && (
           <>
@@ -422,22 +435,33 @@ function Content() {
                 isWaitingTx ||
                 !hasEnoughBalance
               }
-              className="bg-primary w-full mt-8 text-2xl font-semibold text-black px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-primary w-full mt-8 text:xl md:text-2xl  font-semibold text-black px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isPendingWrite || isWaitingTx
-                ? "Processing..."
-                : !hasEnoughBalance
-                ? "Insufficient BNB Testnet for Gas"
-                : data.claimStatus.phase1.canClaim
-                ? "Claim Round 1 Tokens"
-                : "Claim Round 2 Tokens"}
+              {isPendingWrite || isWaitingTx ? (
+                "Processing..."
+              ) : !hasEnoughBalance ? (
+                "Insufficient BNB Testnet for Gas"
+              ) : data.claimStatus.phase1.canClaim ? (
+                "Claim Round 1 Tokens"
+              ) : claimDates.phase2 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
+                  <p className=" text-black text-center md:text-right">
+                    Claim Round 2 Tokens
+                  </p>
+                  <div className="flex items-center justify-center md:justify-start">
+                    <CountdownTimer targetDate={claimDates.phase2.toString()} />
+                  </div>
+                </div>
+              ) : (
+                "Claim Round 2 Tokens"
+              )}
             </button>
             <div className="mt-8">
               <div className="text-xl font-semibold text-blue-400 flex items-center gap-4">
                 <CircleAlert className="w-6 h-6" />
                 Important Information
               </div>
-              <div className="text-lg text-gray-300 mt-4">
+              <div className="md:text-lg text-gray-300 mt-4">
                 <p>
                   Tokens are released in two rounds. Make sure to claim each
                   round during its designated period. Unclaimed tokens may be

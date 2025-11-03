@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, useSignMessage, useSwitchChain } from "wagmi";
+import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
 import { useNavigate } from "react-router-dom";
 import { bscTestnet } from "wagmi/chains";
 import { authService } from "../services/authService";
 import Cookies from "js-cookie";
 import Logo from "../assets/logo.svg?react";
 import Header from "../components/Header";
+import { WalletOptions } from "../components/WalletOption";
 
 function Login() {
   const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
   const { signMessageAsync, isPending: isSigning } = useSignMessage();
   const navigate = useNavigate();
@@ -53,24 +53,6 @@ function Login() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, address]);
-
-  const handleConnect = () => {
-    setError(null);
-    const metaMaskConnector = connectors.find(
-      (connector) => connector.id === "metaMask"
-    );
-    const injectedConnector = connectors.find(
-      (connector) => connector.id === "injected"
-    );
-
-    if (metaMaskConnector) {
-      connect({ connector: metaMaskConnector });
-    } else if (injectedConnector) {
-      connect({ connector: injectedConnector });
-    } else if (connectors[0]) {
-      connect({ connector: connectors[0] });
-    }
-  };
 
   const handleLogin = async () => {
     if (!address || isLoggingIn) return;
@@ -135,14 +117,8 @@ function Login() {
           </p>
 
           {!isConnected ? (
-            <div className="w-full">
-              <button
-                onClick={handleConnect}
-                disabled={isPending}
-                className="w-full text-primary font-medium px-6 py-3 rounded-md border border-primary hover:bg-primary hover:text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPending ? "Connecting..." : "Connect Wallet"}
-              </button>
+            <div className="w-full space-y-3">
+              <WalletOptions />
             </div>
           ) : (
             <div className="w-full space-y-4">
