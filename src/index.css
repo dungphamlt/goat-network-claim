@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* CSS Variables - Biến màu */
+:root {
+  --color-primary: #fde800;
+}
+
+/* Đăng ký màu primary vào Tailwind để sử dụng với bg-primary, text-primary, v.v. */
+@theme {
+  --color-primary: #fde800;
+  --color-primary-DEFAULT: var(--color-primary);
+
+  /* Bật container utility */
+  --default-container-size: 1280px;
+}
+
+/* CSS Reset cơ bản */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Styles cơ bản cho HTML và Body */
+html {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+/* Button utility */
+button {
+  @apply cursor-pointer;
+}
+
+/* Custom shadow cho primary color */
+.shadow-primary {
+  box-shadow: 0 0 10px 4px rgba(253, 232, 0, 0.25);
+}
+
+/* Shimmer animation cho skeleton loading */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Fade in animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Container utility */
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
