@@ -1,5 +1,5 @@
 import { createConfig, http } from "wagmi";
-import { bscTestnet } from "wagmi/chains";
+import { bsc } from "wagmi/chains";
 import { injected, metaMask, walletConnect } from "wagmi/connectors";
 
 // WalletConnect Project ID - bạn cần tạo project ID từ https://cloud.walletconnect.com
@@ -7,14 +7,14 @@ import { injected, metaMask, walletConnect } from "wagmi/connectors";
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "";
 
 export const config = createConfig({
-  chains: [bscTestnet],
+  chains: [bsc],
   connectors: [
     injected(),
     metaMask(),
     ...(projectId ? [walletConnect({ projectId })] : []),
   ],
   transports: {
-    [bscTestnet.id]: http(),
+    [bsc.id]: http(),
   },
 });
 

@@ -1,5 +1,5 @@
 export const wagmiContractConfig = {
-  address: "0x98a3b17ebea809a035dc15678fef6ae96f302637",
+  address: import.meta.env.VITE_CONTRACT_ADDRESS as `0x${string}`,
   abi: [
     {
       type: "function",
