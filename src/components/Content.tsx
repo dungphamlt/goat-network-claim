@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   airdropService,
   type ClaimStatus,
@@ -21,6 +21,8 @@ const DEFAULT_CLAIM_STATUS: ClaimStatus = {
   phase1: { claimed: false, status: "", claimableAmount: "", canClaim: false },
   phase2: { claimed: false, status: "", claimableAmount: "", canClaim: false },
 };
+const TOKEN_ADDRESS = import.meta.env.VITE_TOKEN_ADDRESS as string;
+const PHASE_2_DURATION = 30 * 24 * 60 * 60; // 30 ngày
 
 interface AirdropData {
   eligible: boolean;
@@ -36,6 +38,7 @@ function Content() {
     claimStatus: DEFAULT_CLAIM_STATUS,
   });
   const [loadingAirdropData, setLoadingAirdropData] = useState(false);
+  const notifiedTxHashRef = useRef<string | undefined>(undefined);
 
   // Lấy startTime từ contract
   const { data: startTime, isLoading: isLoadingStartTime } = useReadContract({
@@ -51,10 +54,14 @@ function Content() {
   } = useWriteContract();
 
   // Theo dõi transaction sau khi submit
-  const { isLoading: isWaitingTx, isSuccess: isTxSuccess } =
-    useWaitForTransactionReceipt({
-      hash: txHash,
-    });
+  const {
+    isLoading: isWaitingTx,
+    isSuccess: isTxSuccess,
+    isError: isTxError,
+    error: txError,
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
 
   // Kiểm tra số dư BNB Testnet (native token) để trả phí gas
   // BSC Testnet sử dụng BNB Testnet làm native token để trả phí gas
@@ -70,7 +77,7 @@ function Content() {
   const hasEnoughBalance = useMemo(() => {
     if (!balance?.value) return false;
     return balance.value >= MIN_BALANCE;
-  }, [balance]);
+  }, [balance?.value, MIN_BALANCE]);
 
   const formatAmount = (amount: string) =>
     Number(BigInt(amount) / BigInt(10 ** 18));
@@ -81,7 +88,7 @@ function Content() {
     if (!startTime) return { phase1: undefined, phase2: undefined };
     const start = Number(startTime);
     const phase1Date = BigInt(start); // Phase 1 ngay khi start
-    const phase2Date = BigInt(start + 30 * 24 * 60 * 60); // Phase 2 sau 30 ngày
+    const phase2Date = BigInt(start + PHASE_2_DURATION); // Phase 2 sau 30 ngày
     return { phase1: phase1Date, phase2: phase2Date };
   }, [startTime]);
 
@@ -158,29 +165,95 @@ function Content() {
     return "Not available to claim";
   };
 
+  // Helper function để refresh data
+  const refreshData = useCallback(async () => {
+    if (!address) return;
+    try {
+      setLoadingAirdropData(true);
+      const [eligibleRes, statusRes] = await Promise.all([
+        airdropService.getAirdropEligible(),
+        airdropService.getAirdropClaimStatus(),
+      ]);
+
+      setData({
+        eligible: eligibleRes.data?.eligible ?? false,
+        amount: eligibleRes.data?.amount
+          ? formatAmount(eligibleRes.data.amount.toString())
+          : 0,
+        claimStatus: statusRes.data?.claimStatus ?? DEFAULT_CLAIM_STATUS,
+      });
+    } catch (error) {
+      console.error("Failed to refresh data:", error);
+      toast.error("Failed to refresh claim status. Please refresh the page.");
+    } finally {
+      setLoadingAirdropData(false);
+    }
+  }, [address]);
+
   // Theo dõi khi transaction thành công
   useEffect(() => {
-    if (isTxSuccess) {
-      toast.success("Claimed successfully!");
+    if (isTxSuccess && txHash) {
+      const explorerUrl = `https://bscscan.com/tx/${txHash}`;
+      toast.success(
+        <div>
+          <div>Claimed successfully!</div>
+          <a
+            href={explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 underline text-sm"
+          >
+            View on BscScan
+          </a>
+        </div>,
+        {
+          autoClose: 5000,
+        }
+      );
       // Refresh data sau khi claim thành công
-      if (address) {
-        setLoadingAirdropData(true);
-        Promise.all([
-          airdropService.getAirdropEligible(),
-          airdropService.getAirdropClaimStatus(),
-        ]).then(([eligibleRes, statusRes]) => {
-          setData({
-            eligible: eligibleRes.data?.eligible ?? false,
-            amount: eligibleRes.data?.amount
-              ? formatAmount(eligibleRes.data.amount.toString())
-              : 0,
-            claimStatus: statusRes.data?.claimStatus ?? DEFAULT_CLAIM_STATUS,
-          });
-          setLoadingAirdropData(false);
-        });
-      }
+      refreshData();
     }
-  }, [isTxSuccess, address]);
+  }, [isTxSuccess, txHash, refreshData]);
+
+  // Hiển thị notification khi transaction được submit (pending)
+  useEffect(() => {
+    if (
+      txHash &&
+      !isTxSuccess &&
+      !isTxError &&
+      notifiedTxHashRef.current !== txHash
+    ) {
+      notifiedTxHashRef.current = txHash;
+      const explorerUrl = `https://bscscan.com/tx/${txHash}`;
+      toast.info(
+        <div>
+          <div>Transaction submitted. Waiting for confirmation...</div>
+          <a
+            href={explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 underline text-sm"
+          >
+            View on BscScan
+          </a>
+        </div>,
+        {
+          autoClose: 10000,
+        }
+      );
+    }
+  }, [txHash, isTxSuccess, isTxError]);
+
+  // Theo dõi khi transaction fail
+  useEffect(() => {
+    if (isTxError && txError) {
+      toast.error(`Transaction failed: ${txError.message || "Unknown error"}`, {
+        autoClose: 5000,
+      });
+      // Refresh data để đảm bảo state đồng bộ
+      refreshData();
+    }
+  }, [isTxError, txError, refreshData]);
 
   // Hiển thị lỗi nếu có
   useEffect(() => {
@@ -212,12 +285,12 @@ function Content() {
 
       // Kiểm tra balance trước khi claim
       if (!hasEnoughBalance) {
-        const balanceBNB = balance?.value
-          ? Number(balance.value) / 10 ** 18
+        const balanceBNB = balance?.formatted
+          ? parseFloat(balance.formatted)
           : 0;
         toast.error(
-          `Insufficient BNB Testnet. You have ${balanceBNB.toFixed(6)} BNB. ` +
-            `Please get more from the faucet.`
+          `Insufficient BNB. You have ${balanceBNB.toFixed(6)} BNB. ` +
+            `Please get more to claim.`
         );
         return;
       }
@@ -231,6 +304,7 @@ function Content() {
         functionName: "claim",
         args: [amount, proof],
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error("Failed to claim airdrop:", error);
 
@@ -238,7 +312,7 @@ function Content() {
       if (error?.code === 4001) {
         toast.error("Transaction rejected by user");
       } else if (error?.message?.includes("insufficient funds")) {
-        toast.error("Insufficient BNB Testnet for gas fees");
+        toast.error("Insufficient BNB for gas fees");
       } else if (error?.message) {
         toast.error(error.message);
       } else {
@@ -361,16 +435,14 @@ function Content() {
           </p>
           {/* display contract address and coppy contract address */}
           <div className="flex items-center gap-3">
-            <p className=" text-black hidden md:block">
-              {wagmiContractConfig.address}
-            </p>
+            <p className=" text-black hidden md:block">{TOKEN_ADDRESS}</p>
             <p className=" text-black block md:hidden">
-              {wagmiContractConfig.address.slice(0, 6)}...
-              {wagmiContractConfig.address.slice(-4)}
+              {TOKEN_ADDRESS.slice(0, 6)}...
+              {TOKEN_ADDRESS.slice(-4)}
             </p>
             <button
               onClick={() => {
-                navigator.clipboard.writeText(wagmiContractConfig.address);
+                navigator.clipboard.writeText(TOKEN_ADDRESS);
                 toast.success("Copied to clipboard");
               }}
               className="bg-blue-500 text-white px-4 py-1 rounded-md hover:bg-blue-600 transition-all duration-300"
@@ -400,26 +472,20 @@ function Content() {
                   <CircleAlert className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <p className="text-yellow-400 font-semibold mb-1">
-                      Insufficient BNB Testnet for Gas Fees
+                      Insufficient BNB for Gas Fees
                     </p>
                     <p className="text-yellow-300 text-sm mb-2">
                       Current balance:{" "}
-                      {balance?.value
-                        ? `${(Number(balance.value) / 10 ** 18).toFixed(6)} BNB`
+                      {balance?.formatted
+                        ? `${parseFloat(balance.formatted).toFixed(6)} ${
+                            balance.symbol || "BNB"
+                          }`
                         : "Loading..."}{" "}
                       (Minimum required: 0.0001 BNB)
                     </p>
                     <p className="text-yellow-300 text-sm">
-                      BNB Testnet is the native token on BSC Testnet used to pay
-                      gas fees. Get free BNB Testnet from{" "}
-                      <a
-                        href="https://testnet.bnbchain.org/faucet-smart"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline hover:text-primary/80"
-                      >
-                        BSC Testnet Faucet
-                      </a>
+                      BNB is the native token on BSC used to pay gas fees. Get
+                      more BNB to claim{" "}
                     </p>
                   </div>
                 </div>
@@ -440,7 +506,13 @@ function Content() {
               {isPendingWrite || isWaitingTx ? (
                 "Processing..."
               ) : !hasEnoughBalance ? (
-                "Insufficient BNB Testnet for Gas"
+                "Insufficient BNB for Gas"
+              ) : data.claimStatus.phase1.claimed &&
+                data.claimStatus.phase2.claimed ? (
+                "Claimed"
+              ) : data.claimStatus.phase1.canClaim &&
+                data.claimStatus.phase2.canClaim ? (
+                "Claim full allocation"
               ) : data.claimStatus.phase1.canClaim ? (
                 "Claim Round 1 Tokens"
               ) : claimDates.phase2 ? (
@@ -453,7 +525,7 @@ function Content() {
                   </div>
                 </div>
               ) : (
-                "Claim Round 2 Tokens"
+                <span className="text-center">Claim Round 2 Tokens</span>
               )}
             </button>
             <div className="mt-8">

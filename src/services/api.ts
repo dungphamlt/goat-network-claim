@@ -4,6 +4,7 @@ import Cookies from "js-cookie";
 
 const API_URL = "https://goat-airdrop-be-production.up.railway.app/";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -66,7 +67,9 @@ const handleResponse = <T>(response: AxiosResponse): ApiResponse<T> => {
 const handleError = <T>(error: AxiosError): ApiResponse<T> => {
   return {
     success: false,
-    error: (error.response?.data as any)?.message || error.message,
+    error:
+      (error.response?.data as unknown as { message: string })?.message ||
+      error.message,
     status: error.response?.status,
   };
 };
