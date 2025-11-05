@@ -34,12 +34,14 @@ A decentralized application (dApp) for claiming GOATED tokens from the GOAT Netw
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/johnnylecrypto/goat-airdrop-fe.git
 cd goat-airdrop-fe
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 # or
@@ -49,25 +51,29 @@ pnpm install
 ```
 
 3. Create a `.env` file in the root directory:
+
 ```env
 VITE_API_URL=your_api_url_here
 VITE_CONTRACT_ADDRESS=your_contract_address_here
 VITE_TOKEN_ADDRESS=your_token_address_here
+VITE_RPC_URL=your_bsc_rpc_url_here (optional)
 VITE_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id (optional)
 ```
 
 ## Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_API_URL` | Backend API URL | Yes |
-| `VITE_CONTRACT_ADDRESS` | Smart contract address for airdrop | Yes |
-| `VITE_TOKEN_ADDRESS` | Token contract address | Yes |
-| `VITE_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID | No |
+| Variable                        | Description                        | Required |
+| ------------------------------- | ---------------------------------- | -------- |
+| `VITE_API_URL`                  | Backend API URL                    | Yes      |
+| `VITE_CONTRACT_ADDRESS`         | Smart contract address for airdrop | Yes      |
+| `VITE_TOKEN_ADDRESS`            | Token contract address             | Yes      |
+| `VITE_RPC_URL`                  | BSC RPC endpoint URL               | No       |
+| `VITE_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID           | No       |
 
 ## Development
 
 Start the development server:
+
 ```bash
 npm run dev
 # or
@@ -81,6 +87,7 @@ The app will be available at `http://localhost:5173`
 ## Build
 
 Build for production:
+
 ```bash
 npm run build
 # or
@@ -90,6 +97,7 @@ pnpm build
 ```
 
 Preview production build:
+
 ```bash
 npm run preview
 # or
@@ -124,7 +132,7 @@ src/
 1. **Connect Wallet**: Click "Connect Wallet" and select your preferred wallet
 2. **Check Eligibility**: The app automatically checks if your wallet is eligible
 3. **View Allocation**: See your total allocation and per-round amounts
-4. **Claim Tokens**: 
+4. **Claim Tokens**:
    - Round 1: Claim immediately when available
    - Round 2: Wait for the countdown or claim when available
 5. **Track Transactions**: Monitor your transaction status on BscScan

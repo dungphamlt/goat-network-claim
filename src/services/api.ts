@@ -2,7 +2,7 @@ import axios, { AxiosError } from "axios";
 import type { AxiosResponse } from "axios";
 import Cookies from "js-cookie";
 
-const API_URL = "https://goat-airdrop-be-production.up.railway.app/";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ApiResponse<T = any> {

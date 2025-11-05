@@ -6,6 +6,9 @@ import { injected, metaMask, walletConnect } from "wagmi/connectors";
 // Tạm thời để empty, có thể thêm sau
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "";
 
+// RPC URL từ environment variable, fallback về default nếu không có
+const rpcUrl = import.meta.env.VITE_RPC_URL;
+
 export const config = createConfig({
   chains: [bsc],
   connectors: [
@@ -14,7 +17,7 @@ export const config = createConfig({
     ...(projectId ? [walletConnect({ projectId })] : []),
   ],
   transports: {
-    [bsc.id]: http(),
+    [bsc.id]: rpcUrl ? http(rpcUrl) : http(),
   },
 });
 
