@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
 import { useNavigate } from "react-router-dom";
-import { bscTestnet } from "wagmi/chains";
+import { bsc } from "wagmi/chains";
 import { authService } from "../services/authService";
 import Cookies from "js-cookie";
 import Logo from "../assets/logo.svg?react";
@@ -16,17 +16,14 @@ function Login() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Tự động switch về BSC Testnet sau khi connect nếu chain khác
+  // Tự động switch về BSC sau khi connect nếu chain khác
   useEffect(() => {
-    if (isConnected && chainId && chainId !== bscTestnet.id) {
+    if (isConnected && chainId && chainId !== bsc.id) {
       try {
-        switchChain({ chainId: bscTestnet.id });
+        switchChain({ chainId: bsc.id });
       } catch (error) {
         console.error("Failed to switch chain:", error);
-        setError(
-          "Please switch to BSC Testnet in your wallet. Chain ID: " +
-            bscTestnet.id
-        );
+        setError("Please switch to BSC in your wallet. Chain ID: " + bsc.id);
       }
     }
   }, [isConnected, chainId, switchChain]);
@@ -135,7 +132,7 @@ function Login() {
                 <div className="text-center">
                   <p className="text-primary font-medium">
                     {isSwitchingChain
-                      ? "Switching to BSC Testnet..."
+                      ? "Switching to BSC..."
                       : isSigning
                       ? "Signing message..."
                       : "Logging in..."}
@@ -149,11 +146,10 @@ function Login() {
                 </div>
               )}
 
-              {chainId !== bscTestnet.id && (
+              {chainId !== bsc.id && (
                 <div className="bg-yellow-500/20 border border-yellow-500 rounded-md p-3">
                   <p className="text-yellow-400 text-sm">
-                    Please switch to BSC Testnet (Chain ID: {bscTestnet.id}) to
-                    continue.
+                    Please switch to BSC (Chain ID: {bsc.id}) to continue.
                   </p>
                 </div>
               )}
@@ -162,7 +158,7 @@ function Login() {
                 !isSigning &&
                 !isSwitchingChain &&
                 isConnected &&
-                chainId === bscTestnet.id && (
+                chainId === bsc.id && (
                   <button
                     onClick={handleLogin}
                     className="w-full text-primary font-medium px-6 py-3 rounded-md border border-primary hover:bg-primary hover:text-black transition-all duration-300"
